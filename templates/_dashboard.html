@@ -96,7 +96,7 @@
       <label for="dim-sel">Breakdown by</label>
       <select name="dim" id="dim-sel"
               onchange="location.href='{{ rel_for('usc', tab='summary') }}&dim=' + encodeURIComponent(this.value)">
-        <option value="territory" {% if dim == "territory" %}selected{% endif %}>Market (Territory)</option>
+        <option value="territory" {% if dim == "territory" %}selected{% endif %}>Market (Region)</option>
         <option value="merchant_type" {% if dim == "merchant_type" %}selected{% endif %}>Merchant Type</option>
         <option value="merchant_segment" {% if dim == "merchant_segment" %}selected{% endif %}>Merchant Segment</option>
       </select>

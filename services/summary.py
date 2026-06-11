@@ -166,5 +166,4 @@ def render_summary_table(
     cap = f"Breakdown by {title} · {fmt_num(len(base))} rows · {len(col_metrics)} {title.lower()}s"
     header = f"""<h4 class="section-title">REGIONAL P&amp;L Summary</h4>
 <p class="caption">{html.escape(cap)}</p>"""
-    footer = '<p class="caption">VC % = NETR % − Total Variable Costs. Mirrors the React US MPF &amp; Take Rate Analysis sheet.</p>'
-    return header + table + footer
+    return header + table
