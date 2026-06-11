@@ -2,6 +2,7 @@
 -- Produces the STORES table for data/deals.json["stores"]
 -- Params substituted by run_extract.py: {{rate_type}} {{date_interval}} {{Start_date}} {{End_date}}
 SET session hash_partition_count=64;
+SET session hive.security_row_filtering_enabled=true;
 
 with fdscm_base as (
     select fdscm.*, cty.territory from secure_finance.fds_merchant_datamart fdscm

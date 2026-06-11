@@ -2,6 +2,7 @@
 -- Produces the DEALS table for data/deals.json["deals"]
 -- Params substituted by run_extract.py: {{rate_type}} {{date_interval}} {{Start_date}} {{End_date}}
 SET session hash_partition_count=64;
+SET session hive.security_row_filtering_enabled=true;
 
 -- || DYNAMIC CUTOFF LOGIC (Actuals vs Estimates) || --
 WITH latest_actual AS (
