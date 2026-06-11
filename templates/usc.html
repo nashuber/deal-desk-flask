@@ -1,8 +1,16 @@
 {% extends "base.html" %}
 {% block title %}USC · Deal Desk{% endblock %}
 {% block head_extra %}
-{# Loaded unconditionally so the Visualizations tab can render Plotly charts. #}
-<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+<script src="{{ rel_for('static', filename='vendor/htmx.min.js') }}" defer></script>
+{# Plotly (~1MB) is only needed on the Visualizations tab, so skip it on Summary.
+   Tab switches are full-page navigations, so it loads/unloads with the tab; HTMX
+   filter swaps within the viz tab reuse the already-loaded library. #}
+{% if tab == "viz" %}
+{# Vendored locally (served by Flask) so charts render even where the DSW gateway
+   blocks outbound CDN traffic. Version matches the plotly Python package that
+   generates the chart divs. #}
+<script src="{{ rel_for('static', filename='vendor/plotly-2.35.2.min.js') }}" charset="utf-8"></script>
+{% endif %}
 {% endblock %}
 {% block body %}
 <main class="shell dashboard">

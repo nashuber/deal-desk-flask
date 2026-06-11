@@ -1,7 +1,10 @@
 {# Swappable USC dashboard region. Rendered inline by usc.html on full loads and
    returned on its own (partial=True) for HTMX swaps targeting #dashboard. #}
 <div id="dashboard">
-  <form method="post" action="{{ rel_for('usc_apply') }}" id="filter-form">
+  <form method="post" action="{{ rel_for('usc_apply') }}" id="filter-form"
+        hx-post="{{ rel_for('usc_apply') }}" hx-target="#dashboard" hx-swap="outerHTML">
+    <input type="hidden" name="tab" value="{{ tab }}" />
+    <input type="hidden" name="dim" value="{{ dim }}" />
     <div class="filter-card">
       <div class="fb-group">
         <span class="fb-label">Date Range</span>
@@ -73,7 +76,8 @@
     <div class="filter-meta">
       {% if chips %}
       <span class="filter-chips">{{ chips }}</span>
-      <button type="submit" formaction="{{ rel_for('usc_clear') }}" class="linkbtn">Clear all</button>
+      <button type="submit" formaction="{{ rel_for('usc_clear') }}" class="linkbtn"
+              hx-post="{{ rel_for('usc_clear') }}" hx-target="#dashboard" hx-swap="outerHTML">Clear all</button>
       {% endif %}
       <noscript><button type="submit" class="btn primary">Apply</button></noscript>
     </div>
@@ -95,7 +99,7 @@
     <div class="dim-row">
       <label for="dim-sel">Breakdown by</label>
       <select name="dim" id="dim-sel"
-              onchange="location.href='{{ rel_for('usc', tab='summary') }}&dim=' + encodeURIComponent(this.value)">
+              hx-get="{{ rel_for('usc', tab='summary') }}" hx-target="#dashboard" hx-swap="outerHTML">
         <option value="territory" {% if dim == "territory" %}selected{% endif %}>Market (Region)</option>
         <option value="merchant_type" {% if dim == "merchant_type" %}selected{% endif %}>Merchant Type</option>
         <option value="merchant_segment" {% if dim == "merchant_segment" %}selected{% endif %}>Merchant Segment</option>

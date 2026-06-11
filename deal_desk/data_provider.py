@@ -4,7 +4,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -34,6 +34,10 @@ class Dataset:
     stores: pd.DataFrame
     source_label: str
     updated_at: Optional[str]
+    # Per-dataset memo store for derived values (filter options, chart fragments).
+    # A fresh Dataset is built whenever the underlying data changes (demo reload,
+    # new upload, new/expired gsheet), so the cache is invalidated automatically.
+    cache: Dict[Any, Any] = field(default_factory=dict, compare=False, repr=False)
 
 
 def load_demo() -> Dataset:

@@ -46,10 +46,45 @@ from services.summary import render_summary_table
 load_dotenv()
 
 
+def cached_options(ds: Dataset):
+    """Memoize the filter option lists on the dataset (3ms × every request)."""
+    opts = ds.cache.get("options")
+    if opts is None:
+        opts = derive_options(ds.deals)
+        ds.cache["options"] = opts
+    return opts
+
+
+def cached_charts(ds: Dataset, f, theme: str) -> list[str]:
+    """Memoize Plotly chart fragments per (filters, theme).
+
+    ``build_chart_divs`` is the dominant server cost (~160-410ms) and is otherwise
+    recomputed on every Visualizations render, including when revisiting a filter
+    combination already viewed.
+    """
+    key = (
+        "charts",
+        tuple(f.months),
+        tuple(sorted(f.merchant_types)),
+        tuple(sorted(f.segments)),
+        tuple(sorted(f.markets)),
+        f.fulfillment,
+        theme,
+    )
+    hit = ds.cache.get(key)
+    if hit is None:
+        hit = build_chart_divs(ds.deals, ds.stores, f, theme)
+        ds.cache[key] = hit
+    return hit
+
+
 def create_app() -> Flask:
     app = Flask(__name__, static_folder="static", template_folder="templates")
     app.secret_key = os.environ.get("SECRET_KEY", "dev-deal-desk-change-me")
     app.config["MAX_CONTENT_LENGTH"] = 80 * 1024 * 1024
+    # Let the browser cache static assets (css, vendored htmx) so tab navigations
+    # don't re-validate them each time. 1h keeps post-deploy staleness bounded.
+    app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 3600
     app.config["DATA_CACHE"] = DatasetCache()
     app.config["DEMO_DATASET"] = load_demo()
     app.config["DEMO_MTIME"] = _demo_mtime()
@@ -103,10 +138,71 @@ def create_app() -> Flask:
         session.setdefault("usc_tab", "summary")
         session.setdefault("usc_dim", "territory")
         if "filters" not in session:
-            opts = derive_options(current_dataset().deals)
+            opts = cached_options(current_dataset())
             session["filters"] = session_filters_dict(
                 "All", [], [], [], "All", opts.months,
             )
+
+    def usc_payload() -> dict:
+        """Build the full template context for the dashboard region.
+
+        Shared by the GET view (full page) and the POST handlers (HTMX partial),
+        so a filter/breakdown change re-renders only ``_dashboard.html`` instead of
+        the whole page — avoiding a fresh Plotly download/parse on every click.
+        """
+        ds = current_dataset()
+        deals, stores = ds.deals, ds.stores
+        opts = cached_options(ds)
+        ensure_session_defaults()
+        f = filters_from_session(dict(session), opts.months)
+
+        current = compute_metrics(filter_deals(deals, f), filter_stores(stores, f))
+
+        tab = session.get("usc_tab", "summary")
+        dim = session.get("usc_dim", "territory")
+        if tab not in ("summary", "viz"):
+            tab = "summary"
+        if dim not in ("territory", "merchant_type", "merchant_segment"):
+            dim = "territory"
+
+        theme = session.get("theme", "light")
+        kpi_html = render_kpi_rows(current, None, theme)
+
+        summary_html = ""
+        chart_fragments: list[str] = []
+        if tab == "summary":
+            summary_html = render_summary_table(deals, stores, f, dim, theme)
+        else:
+            chart_fragments = cached_charts(ds, f, theme)
+
+        date_range = session.get("filters", {}).get("date_range", "All")
+        seg_opts = [s for s in opts.segments if s not in ("Missing Segment", "Strategic")]
+
+        return dict(
+            theme=theme,
+            ds=ds,
+            opts=opts,
+            filters=f,
+            date_range=date_range,
+            seg_opts=seg_opts,
+            chips=filter_chips(f),
+            kpi_html=kpi_html,
+            tab=tab,
+            dim=dim,
+            summary_html=summary_html,
+            chart_fragments=chart_fragments,
+            row_count=len(deals),
+            latest_month=fmt_month(opts.months[-1]) if opts.months else "—",
+            row_count_fmt=f"{len(deals):,}",
+        )
+
+    def render_dashboard():
+        """Return the partial (``#dashboard``) for HTMX requests, full page otherwise."""
+        ctx = usc_payload()
+        if request.headers.get("HX-Request"):
+            return render_template("_dashboard.html", **ctx)
+        ctx["flash_error"] = session.pop("flash_error", None)
+        return render_template("usc.html", **ctx)
 
     @app.before_request
     def _before():
@@ -135,57 +231,7 @@ def create_app() -> Flask:
         dq = request.args.get("dim")
         if dq in ("territory", "merchant_type", "merchant_segment"):
             session["usc_dim"] = dq
-
-        ds = current_dataset()
-        deals, stores = ds.deals, ds.stores
-        opts = derive_options(deals)
-        ensure_session_defaults()
-        f = filters_from_session(dict(session), opts.months)
-
-        current = compute_metrics(filter_deals(deals, f), filter_stores(stores, f))
-
-        previous = None  # delta vs previous window removed per request
-
-        tab = session.get("usc_tab", "summary")
-        dim = session.get("usc_dim", "territory")
-        if tab not in ("summary", "viz"):
-            tab = "summary"
-        if dim not in ("territory", "merchant_type", "merchant_segment"):
-            dim = "territory"
-
-        theme = session.get("theme", "light")
-        kpi_html = render_kpi_rows(current, previous, theme)
-
-        summary_html = ""
-        chart_fragments: list[str] = []
-        if tab == "summary":
-            summary_html = render_summary_table(deals, stores, f, dim, theme)
-        else:
-            chart_fragments = build_chart_divs(deals, stores, f, theme)
-
-        date_range = session.get("filters", {}).get("date_range", "All")
-        seg_opts = [s for s in opts.segments if s not in ("Missing Segment", "Strategic")]
-        flash_error = session.pop("flash_error", None)
-
-        return render_template(
-            "usc.html",
-            theme=theme,
-            ds=ds,
-            opts=opts,
-            filters=f,
-            date_range=date_range,
-            seg_opts=seg_opts,
-            chips=filter_chips(f),
-            kpi_html=kpi_html,
-            tab=tab,
-            dim=dim,
-            summary_html=summary_html,
-            chart_fragments=chart_fragments,
-            row_count=len(deals),
-            latest_month=fmt_month(opts.months[-1]) if opts.months else "—",
-            flash_error=flash_error,
-            row_count_fmt=f"{len(deals):,}",
-        )
+        return render_dashboard()
 
     def redirect_to_usc():
         """Relative redirect back to the dashboard.
@@ -201,7 +247,7 @@ def create_app() -> Flask:
     @app.route("/usc/apply", methods=["POST"])
     def usc_apply():
         ds = current_dataset()
-        opts = derive_options(ds.deals)
+        opts = cached_options(ds)
         dr = request.form.get("date_range") or "All"
         mts = request.form.getlist("merchant_type")
         segs = request.form.getlist("segment")
@@ -210,13 +256,17 @@ def create_app() -> Flask:
         session["filters"] = session_filters_dict(dr, mts, segs, mkts, ful, opts.months)
         session["usc_tab"] = request.form.get("tab") or "summary"
         session["usc_dim"] = request.form.get("dim") or "territory"
+        if request.headers.get("HX-Request"):
+            return render_dashboard()
         return redirect_to_usc()
 
     @app.route("/usc/clear", methods=["POST"])
     def usc_clear():
         ds = current_dataset()
-        opts = derive_options(ds.deals)
+        opts = cached_options(ds)
         session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
+        if request.headers.get("HX-Request"):
+            return render_dashboard()
         return redirect_to_usc()
 
     @app.route("/usc/theme", methods=["POST"])
@@ -233,7 +283,7 @@ def create_app() -> Flask:
             session["ds_mode"] = "demo"
             session.pop("upload_key", None)
             session.pop("gsheet_url", None)
-            opts = derive_options(demo_dataset().deals)
+            opts = cached_options(demo_dataset())
             session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
         elif action == "gsheet":
             url = (request.form.get("gsheet_url") or "").strip()
@@ -243,7 +293,7 @@ def create_app() -> Flask:
                 session.pop("upload_key", None)
                 try:
                     ds = get_cached_gsheet(cache, url)
-                    opts = derive_options(ds.deals)
+                    opts = cached_options(ds)
                     session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
                 except Exception as e:
                     session["flash_error"] = str(e)
@@ -258,7 +308,7 @@ def create_app() -> Flask:
                 session["ds_mode"] = "upload"
                 session["upload_key"] = key
                 session.pop("gsheet_url", None)
-                opts = derive_options(ds.deals)
+                opts = cached_options(ds)
                 session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
             except Exception as e:
                 session["flash_error"] = str(e)
