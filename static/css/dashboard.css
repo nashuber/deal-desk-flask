@@ -48,38 +48,73 @@ a:hover { text-decoration: underline; }
 .region-landing { max-width: 1180px; }
 .landing-top { display: flex; align-items: center; padding-top: 2px; }
 .region-heading { text-align: center; font-size: 1.5rem; font-weight: 720; letter-spacing: -.01em; color: var(--fg); margin: 44px 0 30px; }
-.region-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; max-width: 1060px; margin: 0 auto; }
+.region-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; max-width: 1060px; margin: 0 auto; }
 @media (max-width: 900px) { .region-grid { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 540px) { .region-grid { grid-template-columns: 1fr; } }
 .region-card {
-  position: relative; overflow: hidden;
-  display: flex; flex-direction: column; justify-content: space-between; gap: 26px;
-  min-height: 168px; padding: 16px 18px;
-  background: var(--panel); border: 1px solid var(--line); border-radius: 16px;
+  position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; justify-content: space-between; gap: 28px;
+  min-height: 188px; padding: 20px 20px 18px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 18px;
   box-shadow: var(--shadow); color: var(--fg);
-  transition: transform .1s ease, box-shadow .14s ease, border-color .14s ease;
+  transition: transform .18s cubic-bezier(.2,.7,.3,1), box-shadow .22s ease, border-color .22s ease;
 }
+/* soft brand sheen from the top-left */
 .region-card::before {
-  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 78%;
-  background: radial-gradient(130% 90% at 30% -25%, rgba(6,193,103,.22), rgba(6,193,103,0) 62%);
-  pointer-events: none;
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 82%; z-index: -1;
+  background: radial-gradient(130% 95% at 28% -28%, rgba(6,193,103,.2), rgba(6,193,103,0) 60%);
+  pointer-events: none; opacity: .85; transition: opacity .22s ease;
 }
-.region-card.active { cursor: pointer; }
-.region-card.active:hover { text-decoration: none; transform: translateY(-2px); box-shadow: var(--shadow-pop); border-color: rgba(6,193,103,.55); }
-.region-card.disabled { opacity: .6; cursor: default; }
-.region-card.disabled::before { opacity: .45; }
+/* crisp accent line that wipes in along the top edge on hover */
+.region-card::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; z-index: 2;
+  background: linear-gradient(90deg, var(--green), var(--green-deep));
+  transform: scaleX(0); transform-origin: left; transition: transform .3s cubic-bezier(.2,.7,.3,1);
+}
+/* active card stands out at rest: green border, richer tint, brand glow, persistent accent line */
+.region-card.active {
+  cursor: pointer;
+  border-color: rgba(6,193,103,.5);
+  box-shadow: 0 1px 2px rgba(16,24,40,.05), 0 10px 26px rgba(6,193,103,.18);
+}
+.region-card.active::before {
+  height: 100%; opacity: 1;
+  background:
+    radial-gradient(120% 80% at 25% -20%, rgba(6,193,103,.32), rgba(6,193,103,0) 58%),
+    linear-gradient(180deg, rgba(6,193,103,.06), rgba(6,193,103,0) 70%);
+}
+.region-card.active::after { transform: scaleX(1); }
+.region-card.active:hover {
+  text-decoration: none; transform: translateY(-4px);
+  border-color: rgba(6,193,103,.75);
+  box-shadow: 0 2px 4px rgba(16,24,40,.06), 0 18px 40px rgba(6,193,103,.3);
+}
+.region-card.disabled { cursor: default; }
+.region-card.disabled::before { background: radial-gradient(130% 95% at 28% -28%, rgba(120,130,140,.16), transparent 60%); }
 .region-card > * { position: relative; z-index: 1; }
 .region-badge {
   align-self: flex-start; display: inline-flex; align-items: center; gap: 6px;
-  padding: 4px 10px; border-radius: 999px; background: rgba(6,193,103,.12);
-  color: var(--green-deep); font-size: .66rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+  padding: 5px 11px; border-radius: 999px; background: rgba(6,193,103,.13);
+  color: var(--green-deep); font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+  border: 1px solid rgba(6,193,103,.2);
 }
 .region-badge svg { width: 12px; height: 12px; }
-.region-card.disabled .region-badge { background: rgba(120,130,140,.14); color: var(--muted); }
-.region-name { font-size: 1.3rem; font-weight: 740; letter-spacing: -.01em; }
-.region-foot { display: flex; align-items: center; justify-content: space-between; font-size: .7rem; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
-.region-foot .lbl { color: var(--green-deep); }
-.region-foot .arrow { width: 18px; height: 18px; color: var(--green-deep); }
+.region-card.active .region-badge {
+  background: linear-gradient(135deg, #14d378, var(--green-deep)); color: #04261a;
+  border-color: transparent; box-shadow: 0 2px 8px rgba(6,193,103,.35);
+}
+.region-card.disabled .region-badge { background: rgba(120,130,140,.12); color: var(--muted); border-color: transparent; }
+.region-name { font-size: 1.42rem; font-weight: 760; letter-spacing: -.015em; }
+.region-card.disabled .region-name { color: var(--muted); }
+.region-foot { display: flex; align-items: center; justify-content: space-between; font-size: .7rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.region-foot .lbl { display: inline-flex; align-items: center; gap: 7px; color: var(--green-deep); }
+/* live dot on the active "Enter" label */
+.region-card.active .region-foot .lbl::before {
+  content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+  box-shadow: 0 0 0 3px rgba(6,193,103,.22);
+}
+.region-foot .arrow { width: 18px; height: 18px; color: var(--green-deep); transition: transform .22s ease; }
+.region-card.active:hover .region-foot .arrow { transform: translateX(4px); }
 .region-card.disabled .region-foot .lbl, .region-card.disabled .region-foot .arrow { color: var(--muted2); }
 .divider { border: none; border-top: 1px solid var(--line); margin: 22px 0; }
 .about { color: var(--muted); line-height: 1.6; max-width: 920px; }

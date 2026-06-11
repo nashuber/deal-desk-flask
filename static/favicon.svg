@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <rect width="32" height="32" rx="7" fill="#0f1012"/>
+  <g font-family="Helvetica, Arial, sans-serif" font-weight="800" text-anchor="middle">
+    <text x="16" y="15.5" font-size="8.5" fill="#ffffff">Uber</text>
+    <text x="16" y="24.5" font-size="8.5" fill="#06c167">Eats</text>
+  </g>
+</svg>
