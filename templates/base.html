@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme or 'light' }}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    // DSW mounts this app under a session-specific path prefix
+    // (/session/<sid>/phoenix/dashboard/<did>/) that the gateway strips before the
+    // request reaches Flask, so the server cannot know it. We reconstruct it from
+    // the address bar and set <base> so every relative asset, link, and form URL
+    // resolves inside the prefix. Falls back to the current directory locally.
+    (function () {
+      var p = window.location.pathname;
+      var m = p.match(/^(.*\/dashboard\/[^\/]+\/)/);
+      document.write('<base href="' + (m ? m[1] : p.replace(/[^\/]*$/, "")) + '">');
+    })();
+  </script>
+  <title>{% block title %}Deal Desk · Take Rate Analytics{% endblock %}</title>
+  <link rel="stylesheet" href="{{ rel_for('static', filename='css/dashboard.css') }}" />
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="theme-{{ theme or 'light' }}">
+  {% block body %}{% endblock %}
+  {% block scripts %}{% endblock %}
+</body>
+</html>

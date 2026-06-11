@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}USC · Deal Desk{% endblock %}
+{% block head_extra %}
+{# Loaded unconditionally so the Visualizations tab can render Plotly charts. #}
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
+{% endblock %}
+{% block body %}
+<main class="shell dashboard">
+  {% if flash_error %}
+  <div class="banner-error">{{ flash_error }}</div>
+  {% endif %}
+
+  <header class="dash-header">
+    <div class="brand">
+      <div class="ue-logo"><span class="u">Uber</span><span class="e">Eats</span></div>
+      <div>
+        <div class="brand-title">Deal Desk · Take Rate Analytics</div>
+        <div class="brand-sub">US&amp;C</div>
+      </div>
+    </div>
+    <div class="dash-meta">
+      <span class="meta-pill" title="Rows in dataset">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+        {{ row_count_fmt }} rows
+      </span>
+      <span class="meta-pill" title="Latest month">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4 11 3.8a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2v4.6a2 2 0 0 0 .6 1.4l9.6 9.6a2 2 0 0 0 2.8 0l4.6-4.6a2 2 0 0 0 0-2.8Z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor"/></svg>
+        {{ latest_month }}
+      </span>
+      <details class="ds-popover">
+        <summary class="ds-summary">Data: {{ ds.source_label }}</summary>
+        <div class="ds-panel">
+          <form method="post" action="{{ rel_for('usc_data') }}" enctype="multipart/form-data" class="ds-form">
+            <input type="hidden" name="action" value="reset" />
+            <button type="submit" class="btn">Reset to demo data</button>
+          </form>
+          <form method="post" action="{{ rel_for('usc_data') }}" enctype="multipart/form-data" class="ds-form">
+            <input type="hidden" name="action" value="upload" />
+            <label>XLSX upload</label>
+            <input type="file" name="file" accept=".xlsx" required />
+            <button type="submit" class="btn primary">Load file</button>
+          </form>
+          <form method="post" action="{{ rel_for('usc_data') }}" class="ds-form">
+            <input type="hidden" name="action" value="gsheet" />
+            <label>Published sheet URL</label>
+            <input type="url" name="gsheet_url" placeholder="https://docs.google.com/..." class="wide" />
+            <button type="submit" class="btn">Use sheet</button>
+          </form>
+          {% if ds.updated_at %}
+          <p class="caption">Updated {{ ds.updated_at }}</p>
+          {% endif %}
+        </div>
+      </details>
+      <form class="inline-form" method="post" action="{{ rel_for('usc_theme') }}">
+        <select name="theme" class="theme-sel" title="Theme" onchange="this.form.submit()">
+          <option value="light" {% if theme != "dark" %}selected{% endif %}>Light</option>
+          <option value="dark" {% if theme == "dark" %}selected{% endif %}>Dark</option>
+        </select>
+      </form>
+    </div>
+  </header>
+
+  <hr class="divider" />
+
+  {% include "_dashboard.html" %}
+</main>
+{% endblock %}

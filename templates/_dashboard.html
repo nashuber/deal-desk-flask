@@ -1,0 +1,142 @@
+{# Swappable USC dashboard region. Rendered inline by usc.html on full loads and
+   returned on its own (partial=True) for HTMX swaps targeting #dashboard. #}
+<div id="dashboard">
+  <form method="post" action="{{ rel_for('usc_apply') }}" id="filter-form">
+    <div class="filter-card">
+      <div class="fb-group">
+        <span class="fb-label">Date Range</span>
+        <div class="segmented">
+          {% for r in ["3M", "6M", "12M", "YTD", "All"] %}
+          <label><input type="radio" name="date_range" value="{{ r }}" {% if date_range == r %}checked{% endif %} /><span class="seg-txt">{{ r }}</span></label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="fb-group">
+        <span class="fb-label">Merchant Type</span>
+        <details class="fb-dropdown" data-name="merchant_type">
+          <summary><span class="sum-text">{{ filters.merchant_types|join(', ') if filters.merchant_types else 'All' }}</span>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="fb-menu">
+            {% for m in opts.merchant_types %}
+            <label class="fb-opt"><input type="checkbox" name="merchant_type" value="{{ m }}" {% if m in filters.merchant_types %}checked{% endif %} /> {{ m }}</label>
+            {% else %}
+            <div class="fb-empty">No options</div>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+
+      <div class="fb-group">
+        <span class="fb-label">Segment</span>
+        <details class="fb-dropdown" data-name="segment">
+          <summary><span class="sum-text">{{ filters.segments|join(', ') if filters.segments else 'All' }}</span>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="fb-menu">
+            {% for s in seg_opts %}
+            <label class="fb-opt"><input type="checkbox" name="segment" value="{{ s }}" {% if s in filters.segments %}checked{% endif %} /> {{ s }}</label>
+            {% else %}
+            <div class="fb-empty">No options</div>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+
+      <div class="fb-group">
+        <span class="fb-label">Region</span>
+        <details class="fb-dropdown" data-name="market">
+          <summary><span class="sum-text">{{ filters.markets|join(', ') if filters.markets else 'All' }}</span>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="fb-menu">
+            {% for mk in opts.markets %}
+            <label class="fb-opt"><input type="checkbox" name="market" value="{{ mk }}" {% if mk in filters.markets %}checked{% endif %} /> {{ mk }}</label>
+            {% else %}
+            <div class="fb-empty">No options</div>
+            {% endfor %}
+          </div>
+        </details>
+      </div>
+
+      <div class="fb-group">
+        <span class="fb-label">Fulfillment Type</span>
+        <div class="segmented">
+          {% for r in ["All", "CPP", "MPP"] %}
+          <label><input type="radio" name="fulfillment" value="{{ r }}" {% if filters.fulfillment == r %}checked{% endif %} /><span class="seg-txt">{{ r }}</span></label>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-meta">
+      {% if chips %}
+      <span class="filter-chips">{{ chips }}</span>
+      <button type="submit" formaction="{{ rel_for('usc_clear') }}" class="linkbtn">Clear all</button>
+      {% endif %}
+      <noscript><button type="submit" class="btn primary">Apply</button></noscript>
+    </div>
+  </form>
+
+  <section class="kpi-wrap">{{ kpi_html|safe }}</section>
+
+  <hr class="divider" />
+
+  <nav class="tabs">
+    <a class="tab {% if tab == 'summary' %}active{% endif %}"
+       href="{{ rel_for('usc', tab='summary', dim=dim) }}">Summary</a>
+    <a class="tab {% if tab == 'viz' %}active{% endif %}"
+       href="{{ rel_for('usc', tab='viz', dim=dim) }}">Visualizations</a>
+  </nav>
+
+  {% if tab == "summary" %}
+  <section class="tab-panel">
+    <div class="dim-row">
+      <label for="dim-sel">Breakdown by</label>
+      <select name="dim" id="dim-sel"
+              onchange="location.href='{{ rel_for('usc', tab='summary') }}&dim=' + encodeURIComponent(this.value)">
+        <option value="territory" {% if dim == "territory" %}selected{% endif %}>Market (Territory)</option>
+        <option value="merchant_type" {% if dim == "merchant_type" %}selected{% endif %}>Merchant Type</option>
+        <option value="merchant_segment" {% if dim == "merchant_segment" %}selected{% endif %}>Merchant Segment</option>
+      </select>
+    </div>
+    <div class="summary-body">{{ summary_html|safe }}</div>
+  </section>
+  {% else %}
+  <section class="tab-panel charts-panel">
+    {% for frag in chart_fragments %}{{ frag|safe }}{% endfor %}
+  </section>
+  {% endif %}
+
+  <script>
+  (function () {
+    var form = document.getElementById('filter-form');
+    if (form) {
+      form.querySelectorAll('.segmented input[type=radio]').forEach(function (r) {
+        r.addEventListener('change', function () { form.requestSubmit(); });
+      });
+      form.querySelectorAll('details.fb-dropdown').forEach(function (d) {
+        var snap = function () {
+          return Array.prototype.map.call(
+            d.querySelectorAll('input[type=checkbox]'),
+            function (c) { return c.checked ? '1' : '0'; }
+          ).join('');
+        };
+        var initial = snap();
+        d.addEventListener('toggle', function () {
+          if (!d.open && snap() !== initial) { form.requestSubmit(); }
+        });
+      });
+    }
+    if (!window.__uscDocInit) {
+      window.__uscDocInit = true;
+      document.addEventListener('click', function (e) {
+        document.querySelectorAll('details.fb-dropdown[open]').forEach(function (d) {
+          if (!d.contains(e.target)) { d.open = false; }
+        });
+      });
+    }
+  })();
+  </script>
+</div>

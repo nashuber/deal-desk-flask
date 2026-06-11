@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Deal Desk · Take Rate Analytics{% endblock %}
+{% block body %}
+<main class="shell region-landing">
+  <header class="landing-top">
+    <div class="brand">
+      <div class="ue-logo"><span class="u">Uber</span><span class="e">Eats</span></div>
+      <div>
+        <div class="brand-title">Deal Desk · Take Rate Analytics</div>
+        <div class="brand-sub">Global</div>
+      </div>
+    </div>
+  </header>
+
+  <hr class="divider" />
+
+  <h2 class="region-heading">Select a region to see industry benchmarks</h2>
+
+  <div class="region-grid">
+    {% set pin %}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg>{% endset %}
+    {% set arrow %}<svg class="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>{% endset %}
+
+    <a class="region-card active" href="{{ rel_for('usc') }}">
+      <span class="region-badge">{{ pin|safe }} USC</span>
+      <span class="region-name">US &amp; Canada</span>
+      <span class="region-foot"><span class="lbl">Enter</span>{{ arrow|safe }}</span>
+    </a>
+
+    {% for code, name in [("LATAM", "LATAM"), ("EMEA", "EMEA"), ("APAC", "APAC")] %}
+    <div class="region-card disabled" aria-disabled="true">
+      <span class="region-badge">{{ pin|safe }} {{ code }}</span>
+      <span class="region-name">{{ name }}</span>
+      <span class="region-foot"><span class="lbl">Coming soon</span>{{ arrow|safe }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</main>
+{% endblock %}
