@@ -27,30 +27,6 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4 11 3.8a2 2 0 0 0-1.4-.6H5a2 2 0 0 0-2 2v4.6a2 2 0 0 0 .6 1.4l9.6 9.6a2 2 0 0 0 2.8 0l4.6-4.6a2 2 0 0 0 0-2.8Z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor"/></svg>
         {{ latest_month }}
       </span>
-      <details class="ds-popover">
-        <summary class="ds-summary">Data: {{ ds.source_label }}</summary>
-        <div class="ds-panel">
-          <form method="post" action="{{ rel_for('usc_data') }}" enctype="multipart/form-data" class="ds-form">
-            <input type="hidden" name="action" value="reset" />
-            <button type="submit" class="btn">Reset to demo data</button>
-          </form>
-          <form method="post" action="{{ rel_for('usc_data') }}" enctype="multipart/form-data" class="ds-form">
-            <input type="hidden" name="action" value="upload" />
-            <label>XLSX upload</label>
-            <input type="file" name="file" accept=".xlsx" required />
-            <button type="submit" class="btn primary">Load file</button>
-          </form>
-          <form method="post" action="{{ rel_for('usc_data') }}" class="ds-form">
-            <input type="hidden" name="action" value="gsheet" />
-            <label>Published sheet URL</label>
-            <input type="url" name="gsheet_url" placeholder="https://docs.google.com/..." class="wide" />
-            <button type="submit" class="btn">Use sheet</button>
-          </form>
-          {% if ds.updated_at %}
-          <p class="caption">Updated {{ ds.updated_at }}</p>
-          {% endif %}
-        </div>
-      </details>
       <form class="inline-form" method="post" action="{{ rel_for('usc_theme') }}">
         <select name="theme" class="theme-sel" title="Theme" onchange="this.form.submit()">
           <option value="light" {% if theme != "dark" %}selected{% endif %}>Light</option>
