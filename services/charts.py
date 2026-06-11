@@ -325,16 +325,48 @@ def build_chart_divs(
         d = bv_df.sort_values("vc_pct", ascending=False)
         allv = list(d["mpf"]) + list(d["markup"]) + list(d["vc_pct"])
         fig = go.Figure()
-        fig.add_bar(x=d["name"], y=d["mpf"], name="MPF", marker_color=pal["green"], text=d["mpf"].map(lambda v: f"{v:.1f}%"))
-        fig.add_bar(x=d["name"], y=d["markup"], name="Markup", marker_color=pal["muted"], text=d["markup"].map(lambda v: f"{v:.1f}%"))
-        fig.add_bar(x=d["name"], y=d["vc_pct"], name="VC %", marker_color=pal["neutral"], text=d["vc_pct"].map(lambda v: f"{v:.1f}%"))
+        # Explicit offsetgroups keep all four bars side-by-side in one cluster
+        # even though Gross Bookings is drawn against the secondary ($) axis.
+        fig.add_bar(x=d["name"], y=d["mpf"], name="MPF", marker_color=pal["green"],
+                    text=d["mpf"].map(lambda v: f"{v:.1f}%"), offsetgroup="1", alignmentgroup="m")
+        fig.add_bar(x=d["name"], y=d["markup"], name="Markup", marker_color=pal["muted"],
+                    text=d["markup"].map(lambda v: f"{v:.1f}%"), offsetgroup="2", alignmentgroup="m")
+        fig.add_bar(x=d["name"], y=d["vc_pct"], name="VC %", marker_color=pal["neutral"],
+                    text=d["vc_pct"].map(lambda v: f"{v:.1f}%"), offsetgroup="3", alignmentgroup="m")
+        # Gross Bookings lives on a dollar scale, so it gets a secondary ($) axis
+        # — keeping the percentage bars legible instead of being crushed by a
+        # value orders of magnitude larger.
+        fig.add_bar(x=d["name"], y=d["gb"], name="Gross Bookings",
+                    marker_color="rgba(6,193,103,0.35)", marker_line=dict(color=pal["green"], width=1),
+                    text=d["gb"].map(fmt_compact), offsetgroup="4", alignmentgroup="m",
+                    yaxis="y2", hovertemplate="Gross Bookings: $%{y:,.0f}<extra></extra>")
         fig.update_traces(textposition="outside", textfont_size=9, cliponaxis=False)
-        fig.update_layout(barmode="group")
-        fig.update_yaxes(ticksuffix="%", range=_pad(allv, 0.28))
+
+        # Align the two axes so $0 sits at the same height as 0%: place zero at
+        # the identical fractional position on both ranges.
+        prange = _pad(allv, 0.28)
+        p0, p1 = prange[0], prange[1]
+        zero_frac = (-p0) / (p1 - p0) if p1 != p0 else 0.0
+        gb_max = max(list(d["gb"]) + [0.0])
+        s1 = gb_max * 1.28 if gb_max > 0 else 1.0
+        s0 = (zero_frac * s1 / (zero_frac - 1)) if zero_frac not in (0.0, 1.0) else 0.0
+
+        fig.update_layout(
+            barmode="group",
+            yaxis=dict(ticksuffix="%", range=prange),
+            yaxis2=dict(
+                overlaying="y",
+                side="right",
+                showgrid=False,
+                tickprefix="$",
+                tickformat="~s",
+                range=[s0, s1],
+            ),
+        )
         inner = _fig_div(_style(fig, pal, 370), "chart-metrics-v")
     else:
         inner = _EMPTY
-    blocks.append(_card("METRICS BY VERTICAL", "MPF, Markup &amp; VC % compared side-by-side by vertical", inner))
+    blocks.append(_card("METRICS BY VERTICAL", "MPF, Markup &amp; VC % vs Gross Bookings ($, right axis) by vertical", inner))
 
     # 7. CpT by vertical + region
     d = bv_df.sort_values("cpt", ascending=True) if not bv_df.empty else bv_df
