@@ -28,6 +28,15 @@ from deal_desk.data_provider import (
     load_demo,
     load_upload_bytes,
 )
+from deal_desk.data_provider import DATA_JSON
+
+
+def _demo_mtime() -> float:
+    try:
+        return DATA_JSON.stat().st_mtime
+    except OSError:
+        return 0.0
+
 
 from services.charts import build_chart_divs
 from services.filters import filter_chips, filters_from_session, session_filters_dict
@@ -43,6 +52,7 @@ def create_app() -> Flask:
     app.config["MAX_CONTENT_LENGTH"] = 80 * 1024 * 1024
     app.config["DATA_CACHE"] = DatasetCache()
     app.config["DEMO_DATASET"] = load_demo()
+    app.config["DEMO_MTIME"] = _demo_mtime()
 
     @app.context_processor
     def inject_globals():
@@ -61,6 +71,13 @@ def create_app() -> Flask:
         """
         return url_for(endpoint, **values).lstrip("/") or "."
 
+    def demo_dataset() -> Dataset:
+        current = _demo_mtime()
+        if current != app.config.get("DEMO_MTIME"):
+            app.config["DEMO_DATASET"] = load_demo()
+            app.config["DEMO_MTIME"] = current
+        return app.config["DEMO_DATASET"]
+
     def current_dataset() -> Dataset:
         mode = session.get("ds_mode", "demo")
         cache: DatasetCache = app.config["DATA_CACHE"]
@@ -72,13 +89,13 @@ def create_app() -> Flask:
             url = session.get("gsheet_url") or ""
             if not url.strip():
                 session["ds_mode"] = "demo"
-                return app.config["DEMO_DATASET"]
+                return demo_dataset()
             try:
                 return get_cached_gsheet(cache, url.strip())
             except Exception:
                 session["ds_mode"] = "demo"
                 session.pop("gsheet_url", None)
-        return app.config["DEMO_DATASET"]
+        return demo_dataset()
 
     def ensure_session_defaults():
         session.setdefault("theme", "light")
@@ -216,7 +233,7 @@ def create_app() -> Flask:
             session["ds_mode"] = "demo"
             session.pop("upload_key", None)
             session.pop("gsheet_url", None)
-            opts = derive_options(app.config["DEMO_DATASET"].deals)
+            opts = derive_options(demo_dataset().deals)
             session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
         elif action == "gsheet":
             url = (request.form.get("gsheet_url") or "").strip()
