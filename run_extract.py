@@ -4,7 +4,8 @@ run_extract.py — Monthly refresh for the Deal Desk Flask dashboard (Path B, au
 
 Flow
 ----
-1. Compute the month window (defaults to the *previous* calendar month, UTC).
+1. Compute the date window. With no --start/--end, defaults to a ROLLING trailing
+   window (default 12 months) ending on the last day of the previous month.
 2. Substitute {{rate_type}}, {{date_interval}}, {{Start_date}}, {{End_date}}
    into the two SQL templates in ./queries/.
 3. Execute both against Presto via Queryrunner (run_sql()).
@@ -13,17 +14,17 @@ Flow
 5. Write data/deals.json atomically.
 
 Designed to be the Command of a DSW Scheduled Job:
-       python /path/to/deal-desk-flask/run_extract.py
-Run it monthly via the DSW cron fields (see RUNBOOK).
+       python3.11 /path/to/deal-desk-flask/run_extract.py
+With no date args it pulls the trailing 12 months, so the dashboard always has a
+full year (3M / 6M / YTD / 12M filters all stay populated).
 
 Only two queries run:
   - clean_raw_query.sql -> deals.json["deals"]
   - store_query.sql     -> deals.json["stores"]
 The bigger "Raw PnL Query" is a superset the app never reads; skipped on purpose.
 
-NOTE: If the Flask app is long-running, it caches deals.json at startup. Apply the
-app.py patch so the dashboard re-reads on change — then no restart is needed after
-this job runs.
+NOTE: data/deals.json is REPLACED each run (not appended). The app re-reads it on
+change (app.py hot-reload patch), so no restart is needed after this job runs.
 """
 from __future__ import annotations
 
@@ -74,6 +75,25 @@ def previous_month_window(today: dt.date | None = None) -> tuple[str, str]:
     return first_of_prev.isoformat(), last_of_prev.isoformat()
 
 
+def trailing_window(months: int = 12, today: dt.date | None = None) -> tuple[str, str]:
+    """Rolling window ending on the last day of the PREVIOUS calendar month and
+    spanning `months` full calendar months back (inclusive).
+
+    Example (run in June 2026, months=12): 2025-06-01 .. 2026-05-31.
+    The dashboard rewrites deals.json wholesale each run, so we always pull the
+    full trailing year to keep 3M / 6M / YTD / 12M filters populated.
+    """
+    today = today or dt.datetime.utcnow().date()
+    first_of_this_month = today.replace(day=1)
+    end = first_of_this_month - dt.timedelta(days=1)          # last day of prev month
+    end_first = end.replace(day=1)                            # first day of prev month
+    # step back (months-1) more months from end_first to get the window start
+    y, m = end_first.year, end_first.month
+    total = (y * 12 + (m - 1)) - (months - 1)
+    start = dt.date(total // 12, total % 12 + 1, 1)
+    return start.isoformat(), end.isoformat()
+
+
 # ----------------------------------------------------------------------------
 # SQL templating
 # ----------------------------------------------------------------------------
@@ -93,20 +113,11 @@ def run_sql(sql: str) -> List[Dict[str, Any]]:
     """
     Execute `sql` on Presto via Queryrunner and return a list of row dicts
     keyed by the column aliases in the SQL.
-
-    Requires the queryrunner client in the DSW session's virtual environment:
-        pip install queryrunner-client
-
-    The client API name can vary slightly by internal version. The block below
-    tries the common shapes and raises a clear error if none match, so you can
-    adjust one line rather than guess.
     """
     from queryrunner_client import Client  # type: ignore
 
     client = Client(user_email=USER_EMAIL)
 
-    # Most builds expose .execute(datasource, query) returning an iterable of
-    # dict-like rows. Some expose .execute_query(...) or require .load_data().
     if hasattr(client, "execute"):
         result = client.execute(DATASOURCE, sql)
     elif hasattr(client, "execute_query"):
@@ -210,10 +221,12 @@ def write_json_atomic(path: Path, payload: Dict[str, Any]) -> None:
 # ----------------------------------------------------------------------------
 def main() -> int:
     ap = argparse.ArgumentParser(description="Monthly Deal Desk extract -> data/deals.json")
-    ap.add_argument("--start", help="Start_date YYYY-MM-DD (overrides previous-month default)")
-    ap.add_argument("--end", help="End_date YYYY-MM-DD (overrides previous-month default)")
+    ap.add_argument("--start", help="Start_date YYYY-MM-DD (overrides trailing-window default)")
+    ap.add_argument("--end", help="End_date YYYY-MM-DD (overrides trailing-window default)")
     ap.add_argument("--rate-type", default=RATE_TYPE)
     ap.add_argument("--date-interval", default=DATE_INTERVAL)
+    ap.add_argument("--months", type=int, default=int(os.getenv("DD_MONTHS", "12")),
+                    help="Trailing months to pull when --start/--end not given (default 12).")
     ap.add_argument("--dry-run", action="store_true",
                     help="Render SQL and print, but do not execute or write.")
     args = ap.parse_args()
@@ -221,7 +234,7 @@ def main() -> int:
     if args.start and args.end:
         start, end = args.start, args.end
     else:
-        start, end = previous_month_window()
+        start, end = trailing_window(args.months)
 
     params = {
         "rate_type": args.rate_type,
