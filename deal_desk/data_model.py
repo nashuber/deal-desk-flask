@@ -87,8 +87,21 @@ def _ensure_columns(df: pd.DataFrame, numeric: Iterable[str], string: Iterable[s
     return out
 
 
+def _needs_vertical(v: object) -> bool:
+    s = str(v).strip()
+    return s == "" or s == "*"
+
+
 def normalize_deals(df: pd.DataFrame) -> pd.DataFrame:
-    return _ensure_columns(df, DEAL_NUMERIC_FIELDS, DEAL_STRING_FIELDS)
+    out = _ensure_columns(df, DEAL_NUMERIC_FIELDS, DEAL_STRING_FIELDS)
+    # The monthly extract does not emit a Vertical column, so every row arrives as
+    # "*" and the by-Vertical visualizations collapse to one bar. When Vertical is
+    # absent/placeholder, derive it from merchant_type (Grocery, Retail, …); real
+    # values from demo/upload data are left untouched.
+    mask = out["Vertical"].map(_needs_vertical)
+    if mask.any():
+        out.loc[mask, "Vertical"] = out.loc[mask, "merchant_type"].map(pretty_merchant_type)
+    return out
 
 
 def normalize_stores(df: pd.DataFrame) -> pd.DataFrame:
@@ -116,11 +129,20 @@ def filter_deals(df: pd.DataFrame, f: Filters) -> pd.DataFrame:
     return df[mask]
 
 
-def filter_stores(df: pd.DataFrame, f: Filters) -> pd.DataFrame:
+def filter_stores(df: pd.DataFrame, f: Filters, breakdown_dim: str | None = None) -> pd.DataFrame:
+    """Select the store rows whose pre-aggregated ``store_level`` matches the
+    active filters.
+
+    ``breakdown_dim`` is the dimension the summary table splits columns by. When
+    breaking down by ``merchant_type`` / ``merchant_segment`` we must pick a store
+    level that is actually split by that field (``ver_terr`` / ``seg_terr``),
+    otherwise every per-column store metric (Active Stores, Orders/Store, …)
+    collapses to 0 because the ``terr`` level carries no type/segment split.
+    """
     if df.empty:
         return df
-    has_seg = bool(f.segments)
-    has_type = bool(f.merchant_types)
+    has_seg = bool(f.segments) or breakdown_dim == "merchant_segment"
+    has_type = bool(f.merchant_types) or breakdown_dim == "merchant_type"
     if has_seg and has_type:
         level = "ver_terr-seg"
     elif has_seg:
@@ -133,9 +155,9 @@ def filter_stores(df: pd.DataFrame, f: Filters) -> pd.DataFrame:
     mask = df["store_level"] == level
     if f.months:
         mask &= df["accounting_date"].isin(f.months)
-    if has_type:
+    if f.merchant_types:
         mask &= df["merchant_type"].map(pretty_merchant_type).isin(f.merchant_types)
-    if has_seg:
+    if f.segments:
         mask &= df["merchant_segment"].isin(f.segments)
     if f.markets:
         mask &= df["territory"].isin(f.markets)

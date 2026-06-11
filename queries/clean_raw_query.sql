@@ -20,7 +20,7 @@ WITH latest_actual AS (
         fdscm.*,
         cty.territory
     from secure_finance.fds_merchant_datamart fdscm
-    left join kirby_external_data.wave_dash_city_mapping cty
+    left join kirby_external_data.usc_territory_city_mapping cty
         on fdscm.city_id = cty.city_id
     where 1=1
         and rate_type = '{{rate_type}}'

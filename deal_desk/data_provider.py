@@ -16,7 +16,16 @@ from .excel_parser import parse_excel_file
 from . import gsheet
 
 DEMO_LABEL = "Demo data"
-DATA_JSON = Path(__file__).resolve().parent.parent / "data" / "deals.json"
+_DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_JSON = _DATA_DIR / "deals.json"
+# Committed seed used for local dev / fresh clones. The live deals.json is
+# gitignored and generated on the box by run_extract.py, so it may be absent
+# in a fresh checkout; fall back to the seed so the app still boots.
+DATA_SAMPLE_JSON = _DATA_DIR / "deals.sample.json"
+
+
+def _resolve_data_path() -> Path:
+    return DATA_JSON if DATA_JSON.exists() else DATA_SAMPLE_JSON
 
 
 @dataclass
@@ -28,7 +37,7 @@ class Dataset:
 
 
 def load_demo() -> Dataset:
-    with open(DATA_JSON, "r", encoding="utf-8") as f:
+    with open(_resolve_data_path(), "r", encoding="utf-8") as f:
         raw = json.load(f)
     deals = normalize_deals(pd.DataFrame(raw.get("deals", [])))
     stores = normalize_stores(pd.DataFrame(raw.get("stores", [])))

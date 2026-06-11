@@ -103,6 +103,30 @@ def _fig_div(fig: go.Figure, div_id: str) -> str:
                        config={"displayModeBar": False, "responsive": True})
 
 
+def _trend_point_labels(
+    fig: go.Figure,
+    x_vals: Sequence[str],
+    y_vals: Sequence[float],
+    color: str,
+    *,
+    yshift: int,
+    xshift: int = 0,
+) -> None:
+    """Add per-point value labels with pixel offsets so nearby series stay readable."""
+    for x, y in zip(x_vals, y_vals):
+        fig.add_annotation(
+            x=x,
+            y=y,
+            text=f"{y:.1f}%",
+            showarrow=False,
+            xshift=xshift,
+            yshift=yshift,
+            font=dict(color=color, size=10),
+            xref="x",
+            yref="y",
+        )
+
+
 def _card(title: str, subtitle: str, inner: str) -> str:
     sub = f'<div class="chart-sub">{subtitle}</div>' if subtitle else ""
     return f'<div class="viz-card"><div class="chart-card-title">{title}</div>{sub}{inner}</div>'
@@ -181,21 +205,30 @@ def build_chart_divs(
         fig = go.Figure()
         fig.add_scatter(
             x=trend_df["month"], y=trend_df["Total Take Rate"], name="Total Take Rate",
-            mode="lines+markers+text", line=dict(color=pal["green"], width=2.5),
-            text=trend_df["Total Take Rate"].map(lambda v: f"{v:.1f}%"), textposition="top center",
+            mode="lines+markers", line=dict(color=pal["green"], width=2.5),
+            hovertemplate="Take Rate: %{y:.1f}%<extra></extra>",
         )
         fig.add_scatter(
             x=trend_df["month"], y=trend_df["MPF"], name="MPF",
-            mode="lines+markers+text", line=dict(color=pal["neutral"], width=2),
-            text=trend_df["MPF"].map(lambda v: f"{v:.1f}%"), textposition="bottom center",
+            mode="lines+markers", line=dict(color=pal["neutral"], width=2),
+            hovertemplate="MPF: %{y:.1f}%<extra></extra>",
         )
         fig.add_scatter(
             x=trend_df["month"], y=trend_df["Markup"], name="Markup",
-            mode="lines+markers+text", line=dict(color=pal["muted"], width=2, dash="dash"),
-            text=trend_df["Markup"].map(lambda v: f"{v:.1f}%"), textposition="top center",
+            mode="lines+markers", line=dict(color=pal["muted"], width=2, dash="dash"),
+            marker=dict(color=pal["muted"]),
+            hovertemplate="Markup: %{y:.1f}%<extra></extra>",
         )
-        fig.update_yaxes(ticksuffix="%")
-        inner = _fig_div(_style(fig, pal, 300), "chart-trend")
+        # Stagger labels vertically so the converging MPF / Markup series never
+        # collide: Take Rate and MPF sit above their points, Markup sits below.
+        _trend_point_labels(fig, trend_df["month"], trend_df["Total Take Rate"], pal["green"], yshift=15)
+        _trend_point_labels(fig, trend_df["month"], trend_df["MPF"], pal["neutral"], yshift=14)
+        _trend_point_labels(fig, trend_df["month"], trend_df["Markup"], pal["muted"], yshift=-15)
+        fig.update_layout(hovermode="x unified")
+        all_y = (list(trend_df["Total Take Rate"]) + list(trend_df["MPF"])
+                 + list(trend_df["Markup"]))
+        fig.update_yaxes(ticksuffix="%", range=_pad(all_y, 0.32))
+        inner = _fig_div(_style(fig, pal, 340).update_layout(margin=dict(l=10, r=18, t=52, b=28)), "chart-trend")
     else:
         inner = _EMPTY
     blocks.append(_card("Month-over-Month Trend", "Total Take rate, MPF &amp; Markup across months", inner))

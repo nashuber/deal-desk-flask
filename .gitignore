@@ -9,3 +9,11 @@ __pycache__/
 instance/
 .DS_Store
 .ipynb_checkpoints/
+
+# Live dataset is generated on the box by run_extract.py (monthly job) and must
+# never be overwritten by a code deploy. The committed data/deals.sample.json is
+# the seed used for local dev / fresh clones.
+data/deals.json
+
+# Reference spreadsheets / ad-hoc data drops
+*.xlsx

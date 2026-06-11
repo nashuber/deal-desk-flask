@@ -93,7 +93,7 @@ def render_summary_table(
     theme: str,
 ) -> str:
     base = filter_deals(deals, filters)
-    base_stores = filter_stores(stores, filters)
+    base_stores = filter_stores(stores, filters, breakdown_dim=dimension)
 
     if dimension == "merchant_type":
         deal_key = base["merchant_type"].map(pretty_merchant_type)
