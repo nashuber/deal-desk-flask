@@ -33,3 +33,16 @@ git push -u origin main
 ```
 
 Requires your SSH key to be added to GitHub.
+
+## Option D — One script (DSW / CI)
+
+`gh` is installed to `~/.local/bin/gh` (if you used the curl install). Then:
+
+```bash
+cd deal-desk-flask
+export PATH="$HOME/.local/bin:$PATH"
+export GH_TOKEN=ghp_your_classic_pat_with_repo_scope
+./scripts/publish-github.sh
+```
+
+Creates `deal-desk-flask` on your account (public by default) and pushes `main`.
