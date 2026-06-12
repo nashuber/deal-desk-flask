@@ -5,7 +5,7 @@
         hx-post="{{ rel_for('usc_apply') }}" hx-target="#dashboard" hx-swap="outerHTML">
     <input type="hidden" name="tab" value="{{ tab }}" />
     <input type="hidden" name="dim" value="{{ dim }}" />
-    <div class="filter-card">
+        <div class="filter-card">
       <div class="fb-group">
         <span class="fb-label">Date Range</span>
         <div class="segmented">
@@ -13,6 +13,22 @@
           <label><input type="radio" name="date_range" value="{{ r }}" {% if date_range == r %}checked{% endif %} /><span class="seg-txt">{{ r }}</span></label>
           {% endfor %}
         </div>
+      </div>
+
+      <div class="fb-group">
+        <span class="fb-label">Country</span>
+        <details class="fb-dropdown" data-name="country">
+          <summary><span class="sum-text">{{ filters.countries|join(', ') if filters.countries else 'All' }}</span>
+            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="fb-menu">
+            {% for c in opts.countries %}
+            <label class="fb-opt"><input type="checkbox" name="country" value="{{ c }}" {% if c in filters.countries %}checked{% endif %} /> {{ c }}</label>
+            {% else %}
+            <div class="fb-empty">No options</div>
+            {% endfor %}
+          </div>
+        </details>
       </div>
 
       <div class="fb-group">
@@ -64,22 +80,6 @@
       </div>
 
       <div class="fb-group">
-        <span class="fb-label">Country</span>
-        <details class="fb-dropdown" data-name="country">
-          <summary><span class="sum-text">{{ filters.countries|join(', ') if filters.countries else 'All' }}</span>
-            <svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </summary>
-          <div class="fb-menu">
-            {% for c in opts.countries %}
-            <label class="fb-opt"><input type="checkbox" name="country" value="{{ c }}" {% if c in filters.countries %}checked{% endif %} /> {{ c }}</label>
-            {% else %}
-            <div class="fb-empty">No options</div>
-            {% endfor %}
-          </div>
-        </details>
-      </div>
-
-      <div class="fb-group">
         <span class="fb-label">Fulfillment Type</span>
         <div class="segmented">
           {% for r in ["All", "CPP", "MPP"] %}
@@ -89,7 +89,7 @@
       </div>
     </div>
 
-    <div class="filter-meta">
+<div class="filter-meta">
       {% if chips %}
       <span class="filter-chips">{{ chips }}</span>
       <button type="submit" formaction="{{ rel_for('usc_clear') }}" class="linkbtn"
