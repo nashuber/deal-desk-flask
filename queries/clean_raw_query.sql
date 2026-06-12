@@ -20,7 +20,11 @@ WITH latest_actual AS (
         fdscm.*,
         cty.territory
     from secure_finance.fds_merchant_datamart fdscm
-    left join kirby_external_data.usc_territory_city_mapping cty
+    -- Territory source: wave_dash_city_mapping carries a distinct "New York"
+    -- territory (folded into Northeast in data_model.TERRITORY_REGION_MAP), matching
+    -- the US MPF & Take Rate analysis sheet. usc_territory_city_mapping (used by the
+    -- store query) lacks "New York" and scatters those cities into Midwest/Northeast.
+    left join kirby_external_data.wave_dash_city_mapping cty
         on fdscm.city_id = cty.city_id
     where 1=1
         and rate_type = '{{rate_type}}'

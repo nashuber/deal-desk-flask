@@ -55,6 +55,16 @@ _COUNTRY_MAP = {
 }
 
 
+# Region rollup for the US&C P&L summary. The deals (P&L) extract derives
+# ``territory`` from ``wave_dash_city_mapping``, which carries a distinct
+# "New York" territory; the source-of-truth analysis sheet folds it into the
+# Northeast region (its Mapping tab), so we mirror that here. All other
+# territories map to themselves.
+TERRITORY_REGION_MAP = {
+    "New York": "Northeast",
+}
+
+
 def normalize_country(v: object) -> str:
     s = str(v or "").strip()
     if not s:
@@ -134,6 +144,7 @@ def normalize_deals(df: pd.DataFrame) -> pd.DataFrame:
     mask = out["Vertical"].map(_needs_vertical)
     if mask.any():
         out.loc[mask, "Vertical"] = out.loc[mask, "merchant_type"].map(pretty_merchant_type)
+    out["territory"] = out["territory"].map(lambda t: TERRITORY_REGION_MAP.get(t, t))
     _normalize_country_col(out)
     return out
 
@@ -300,7 +311,7 @@ def compute_metrics(deals: pd.DataFrame, stores: pd.DataFrame) -> Metrics:
         eater_fees_pct_basket=_safe(s["booking_fees"] + s["service_fees"] + s["other_uber_fees"], basket),
         delivery_fee_pct_basket=_safe(s["booking_fees"], basket),
         service_fee_pct_basket=_safe(s["service_fees"], basket),
-        marketing_pct_gb=_safe(s["tf_disbursed"], gb),
+        marketing_pct_gb=_safe(s["EuP"], gb) + _safe(s["pass_net"], gb),
         eup_pct_gb=_safe(s["EuP"], gb),
         uber_one_discount_pct_gb=_safe(s["pass_net"], gb),
         ads_rev_pct_gb=_safe(s["ads_rev"], gb),
