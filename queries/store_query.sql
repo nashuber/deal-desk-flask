@@ -10,7 +10,7 @@ with fdscm_base as (
     on fdscm.city_id = cty.city_id
     where 1=1
         and rate_type = '{{rate_type}}'
-        and fdscm.country_name in ('Country - United States')
+        and fdscm.country_name in ('Country - United States', 'Country - Canada')
         and fdscm.lob_code in ('2004')
 )
 

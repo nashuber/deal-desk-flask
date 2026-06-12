@@ -45,6 +45,7 @@ def filters_from_session(sess: dict[str, Any], all_months: List[str]) -> Filters
         segments=list(raw.get("segments") or []),
         markets=list(raw.get("markets") or []),
         fulfillment=ful,  # type: ignore[arg-type]
+        countries=list(raw.get("countries") or []),
     )
 
 
@@ -54,6 +55,7 @@ def session_filters_dict(
     segments: List[str],
     markets: List[str],
     fulfillment: str,
+    countries: List[str],
     all_months: List[str],
 ) -> dict[str, Any]:
     if date_range not in _RANGES:
@@ -66,6 +68,7 @@ def session_filters_dict(
         "segments": segments,
         "markets": markets,
         "fulfillment": fulfillment,
+        "countries": countries,
     }
 
 
@@ -78,6 +81,7 @@ def filter_chips(f: Filters) -> str:
     chips.extend(f.merchant_types)
     chips.extend(f.segments)
     chips.extend(f.markets)
+    chips.extend(f.countries)
     if f.fulfillment != "All":
         chips.append(f.fulfillment)
     return " · ".join(chips)

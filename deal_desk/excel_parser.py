@@ -22,6 +22,7 @@ DEAL_ALIASES: Dict[str, List[str]] = {
     "grouped_parent_name": ["groupedparentname", "parentname", "merchantname", "brand", "account"],
     "territory": ["territory", "market", "region", "city"],
     "Vertical": ["vertical", "verticalname"],
+    "country": ["country", "countryname"],
     "trips": ["trips", "orders", "completedtrips", "completedorders"],
     "basket": ["basket", "totalsales", "sales", "gmv", "subtotal"],
     "booking_fees": ["bookingfees", "deliveryfee", "deliveryfees", "bookingfee"],
@@ -52,6 +53,7 @@ STORE_ALIASES: Dict[str, List[str]] = {
     "store_level": ["storelevel", "level", "grain"],
     "Vertical": ["vertical", "verticalname"],
     "Region": ["region", "macroregion"],
+    "country": ["country", "countryname"],
 }
 
 DEAL_DATE_FIELDS = {"date"}

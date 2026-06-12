@@ -161,10 +161,12 @@ a:hover { text-decoration: underline; }
 /* ---------- Filter bar ---------- */
 .filter-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow); padding: 16px 18px; display: flex; flex-wrap: wrap;
-  align-items: flex-start; gap: 26px 34px;
+  box-shadow: var(--shadow); padding: 16px 18px; display: flex; flex-wrap: nowrap;
+  align-items: flex-start; gap: 18px 20px;
 }
-.fb-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.fb-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; flex: 0 0 auto; }
+/* Let the filter bar wrap again on narrower screens so controls don't overflow. */
+@media (max-width: 1080px) { .filter-card { flex-wrap: wrap; gap: 22px 28px; } }
 .fb-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
 
 /* segmented pill control (Date Range, Fulfillment) */
@@ -173,7 +175,7 @@ a:hover { text-decoration: underline; }
 .segmented input { position: absolute; opacity: 0; inset: 0; cursor: pointer; }
 .segmented .seg-txt {
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 6px 16px; border-radius: 999px; font-size: .85rem; font-weight: 600;
+  padding: 6px 13px; border-radius: 999px; font-size: .85rem; font-weight: 600;
   color: var(--muted); white-space: nowrap; transition: all .12s ease;
 }
 .segmented label:hover .seg-txt { color: var(--fg); }
@@ -183,7 +185,7 @@ body.theme-dark .segmented input:checked + .seg-txt { color: #0f1114; background
 /* dropdown checklists (Merchant Type / Segment / Region) */
 .fb-dropdown { position: relative; }
 .fb-dropdown > summary {
-  list-style: none; cursor: pointer; min-width: 168px;
+  list-style: none; cursor: pointer; min-width: 138px;
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-sm);
   padding: 9px 12px; font-size: .88rem; color: var(--fg);
@@ -191,7 +193,7 @@ body.theme-dark .segmented input:checked + .seg-txt { color: #0f1114; background
 .fb-dropdown > summary::-webkit-details-marker { display: none; }
 .fb-dropdown > summary:hover { border-color: var(--line-strong); }
 .fb-dropdown[open] > summary { border-color: var(--green); box-shadow: 0 0 0 3px rgba(6,193,103,.15); }
-.fb-dropdown .sum-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 180px; }
+.fb-dropdown .sum-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 132px; }
 .fb-dropdown .chev { transition: transform .15s ease; flex: 0 0 auto; color: var(--muted); }
 .fb-dropdown[open] .chev { transform: rotate(180deg); }
 .fb-menu {

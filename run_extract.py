@@ -177,6 +177,7 @@ def to_deal_records(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "grouped_parent_name": _str(r.get("grouped_parent_name")),
             "territory": _str(r.get("territory")),
             "Vertical": _str(r.get("Vertical")) or "*",
+            "country": _str(r.get("country_name") or r.get("country")),
         }
         for f in DEAL_NUMERIC_FIELDS:
             rec[f] = _num(r.get(f))
@@ -197,6 +198,7 @@ def to_store_records(rows: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             "store_level": _str(r.get("store_level")) or "terr",
             "Vertical": _str(r.get("Vertical")) or "*",
             "Region": _str(r.get("Region")) or territory,
+            "country": _str(r.get("country_name") or r.get("country")),
         })
     return out
 

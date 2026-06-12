@@ -24,16 +24,42 @@ DEAL_NUMERIC_FIELDS: List[str] = [
 
 DEAL_STRING_FIELDS: List[str] = [
     "date", "merchant_type", "merchant_segment", "grouped_parent_name",
-    "territory", "Vertical",
+    "territory", "Vertical", "country",
 ]
 
 STORE_NUMERIC_FIELDS: List[str] = ["active_stores"]
 STORE_STRING_FIELDS: List[str] = [
     "accounting_date", "merchant_type", "merchant_segment", "territory",
-    "store_level", "Vertical", "Region",
+    "store_level", "Vertical", "Region", "country",
 ]
 
 FulfillmentMode = Literal["All", "CPP", "MPP"]
+
+# US&C region: rows without an explicit country are treated as US, since the
+# warehouse extract is US-centric and the demo dataset carries only US data.
+DEFAULT_COUNTRY = "US"
+
+# Map the warehouse ``country_name`` labels (and common variants) onto the short
+# codes used by the dashboard filter.
+_COUNTRY_MAP = {
+    "country - united states": "US",
+    "united states": "US",
+    "usa": "US",
+    "us": "US",
+    "u.s.": "US",
+    "u.s.a.": "US",
+    "country - canada": "Canada",
+    "canada": "Canada",
+    "can": "Canada",
+    "ca": "Canada",
+}
+
+
+def normalize_country(v: object) -> str:
+    s = str(v or "").strip()
+    if not s:
+        return ""
+    return _COUNTRY_MAP.get(s.lower(), s)
 
 # Same MPP set as getFulfillment() in dataModel.ts
 _MPP_TYPES = {
@@ -54,11 +80,13 @@ class Filters:
     segments: List[str] = field(default_factory=list)
     markets: List[str] = field(default_factory=list)
     fulfillment: FulfillmentMode = "All"
+    countries: List[str] = field(default_factory=list)
 
     def is_active(self) -> bool:
         return bool(
             self.months or self.merchant_types or self.segments
             or self.markets or self.fulfillment != "All"
+            or self.countries
         )
 
 
@@ -92,6 +120,11 @@ def _needs_vertical(v: object) -> bool:
     return s == "" or s == "*"
 
 
+def _normalize_country_col(out: pd.DataFrame) -> None:
+    out["country"] = out["country"].map(normalize_country)
+    out.loc[out["country"] == "", "country"] = DEFAULT_COUNTRY
+
+
 def normalize_deals(df: pd.DataFrame) -> pd.DataFrame:
     out = _ensure_columns(df, DEAL_NUMERIC_FIELDS, DEAL_STRING_FIELDS)
     # The monthly extract does not emit a Vertical column, so every row arrives as
@@ -101,12 +134,14 @@ def normalize_deals(df: pd.DataFrame) -> pd.DataFrame:
     mask = out["Vertical"].map(_needs_vertical)
     if mask.any():
         out.loc[mask, "Vertical"] = out.loc[mask, "merchant_type"].map(pretty_merchant_type)
+    _normalize_country_col(out)
     return out
 
 
 def normalize_stores(df: pd.DataFrame) -> pd.DataFrame:
     out = _ensure_columns(df, STORE_NUMERIC_FIELDS, STORE_STRING_FIELDS)
     out.loc[out["store_level"] == "", "store_level"] = "terr"
+    _normalize_country_col(out)
     return out
 
 
@@ -124,6 +159,8 @@ def filter_deals(df: pd.DataFrame, f: Filters) -> pd.DataFrame:
         mask &= df["merchant_segment"].isin(f.segments)
     if f.markets:
         mask &= df["territory"].isin(f.markets)
+    if f.countries:
+        mask &= df["country"].isin(f.countries)
     if f.fulfillment != "All":
         mask &= df["merchant_type"].map(get_fulfillment) == f.fulfillment
     return df[mask]
@@ -161,6 +198,8 @@ def filter_stores(df: pd.DataFrame, f: Filters, breakdown_dim: str | None = None
         mask &= df["merchant_segment"].isin(f.segments)
     if f.markets:
         mask &= df["territory"].isin(f.markets)
+    if f.countries:
+        mask &= df["country"].isin(f.countries)
     return df[mask]
 
 
@@ -288,16 +327,18 @@ class FilterOptions:
     merchant_types: List[str]
     segments: List[str]
     markets: List[str]
+    countries: List[str]
 
 
 def derive_options(deals: pd.DataFrame) -> FilterOptions:
     if deals.empty:
-        return FilterOptions([], [], [], [])
+        return FilterOptions([], [], [], [], [])
     return FilterOptions(
         months=sorted(set(deals["date"].dropna().astype(str))),
         merchant_types=sorted(set(deals["merchant_type"].map(pretty_merchant_type))),
         segments=sorted(set(deals["merchant_segment"].astype(str))),
         markets=sorted(set(deals["territory"].astype(str))),
+        countries=sorted(set(deals["country"].astype(str))),
     )
 
 

@@ -69,6 +69,7 @@ def cached_charts(ds: Dataset, f, theme: str) -> list[str]:
         tuple(sorted(f.segments)),
         tuple(sorted(f.markets)),
         f.fulfillment,
+        tuple(sorted(f.countries)),
         theme,
     )
     hit = ds.cache.get(key)
@@ -140,7 +141,7 @@ def create_app() -> Flask:
         if "filters" not in session:
             opts = cached_options(current_dataset())
             session["filters"] = session_filters_dict(
-                "All", [], [], [], "All", opts.months,
+                "All", [], [], [], "All", [], opts.months,
             )
 
     def usc_payload() -> dict:
@@ -253,7 +254,8 @@ def create_app() -> Flask:
         segs = request.form.getlist("segment")
         mkts = request.form.getlist("market")
         ful = request.form.get("fulfillment") or "All"
-        session["filters"] = session_filters_dict(dr, mts, segs, mkts, ful, opts.months)
+        countries = request.form.getlist("country")
+        session["filters"] = session_filters_dict(dr, mts, segs, mkts, ful, countries, opts.months)
         session["usc_tab"] = request.form.get("tab") or "summary"
         session["usc_dim"] = request.form.get("dim") or "territory"
         if request.headers.get("HX-Request"):
@@ -264,7 +266,7 @@ def create_app() -> Flask:
     def usc_clear():
         ds = current_dataset()
         opts = cached_options(ds)
-        session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
+        session["filters"] = session_filters_dict("All", [], [], [], "All", [], opts.months)
         if request.headers.get("HX-Request"):
             return render_dashboard()
         return redirect_to_usc()
@@ -284,7 +286,7 @@ def create_app() -> Flask:
             session.pop("upload_key", None)
             session.pop("gsheet_url", None)
             opts = cached_options(demo_dataset())
-            session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
+            session["filters"] = session_filters_dict("All", [], [], [], "All", [], opts.months)
         elif action == "gsheet":
             url = (request.form.get("gsheet_url") or "").strip()
             if url:
@@ -294,7 +296,7 @@ def create_app() -> Flask:
                 try:
                     ds = get_cached_gsheet(cache, url)
                     opts = cached_options(ds)
-                    session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
+                    session["filters"] = session_filters_dict("All", [], [], [], "All", [], opts.months)
                 except Exception as e:
                     session["flash_error"] = str(e)
                     session["ds_mode"] = "demo"
@@ -309,7 +311,7 @@ def create_app() -> Flask:
                 session["upload_key"] = key
                 session.pop("gsheet_url", None)
                 opts = cached_options(ds)
-                session["filters"] = session_filters_dict("All", [], [], [], "All", opts.months)
+                session["filters"] = session_filters_dict("All", [], [], [], "All", [], opts.months)
             except Exception as e:
                 session["flash_error"] = str(e)
         return redirect_to_usc()
